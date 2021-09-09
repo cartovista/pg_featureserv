@@ -15,6 +15,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/CrunchyData/pg_featureserv/internal/api"
@@ -135,6 +136,16 @@ func linkAlt(urlBase string, path string, desc string) *api.Link {
 		Rel:   api.RelAlt,
 		Type:  api.ContentTypeHTML,
 		Title: desc + api.TitleAsHTML}
+}
+
+func linkNext(urlBase string, path string, desc string, param *data.QueryParam) *api.Link {
+	newOffset := param.Offset + param.Limit
+	newPath := fmt.Sprintf("%s?limit=%d&offset=%d", path, param.Limit, newOffset)
+	return &api.Link{
+		Href:  urlPath(urlBase, newPath),
+		Rel:   api.RelNext,
+		Type:  api.ContentTypeJSON,
+		Title: desc + api.TitleAsJSON}
 }
 
 func handleCollections(w http.ResponseWriter, r *http.Request) *appError {
@@ -311,17 +322,18 @@ func writeItemsJSON(ctx context.Context, w http.ResponseWriter, name string, par
 
 	//--- assemble resonse
 	content := api.NewFeatureCollectionInfo(features)
-	content.Links = linksItems(name, urlBase)
+	content.Links = linksItems(name, urlBase, param)
 
 	return writeJSON(w, api.ContentTypeGeoJSON, content)
 }
 
-func linksItems(name string, urlBase string) []*api.Link {
+func linksItems(name string, urlBase string, param *data.QueryParam) []*api.Link {
 	path := api.PathCollectionItems(name)
 
 	var links []*api.Link
 	links = append(links, linkSelf(urlBase, path, api.TitleDocument))
 	links = append(links, linkAlt(urlBase, path, api.TitleDocument))
+	links = append(links, linkNext(urlBase, path, api.TitleDocument, param))
 
 	return links
 }
@@ -631,7 +643,7 @@ func writeFunItemsGeoJSON(ctx context.Context, w http.ResponseWriter, name strin
 
 	//--- assemble resonse
 	content := api.NewFeatureCollectionInfo(features)
-	content.Links = linksItems(name, urlBase)
+	content.Links = linksItems(name, urlBase, param)
 
 	return writeJSON(w, api.ContentTypeGeoJSON, content)
 }
